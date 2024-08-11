@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_CREDENTIALS = credentials('your-dockerhub-credentials-id')
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
     }
 
     stages {
@@ -31,30 +31,68 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
-            steps {
-                script {
-                    // Build Docker image
-                    sh 'docker build -t your-dockerhub-username/java-project:latest .'
+        stage('Build Docker Images') {
+            parallel {
+                stage('Build Order Service Docker Image') {
+                    steps {
+                        script {
+                            sh 'docker build -t your-dockerhub-username/order-service:latest -f order-service/Dockerfile .'
+                        }
+                    }
+                }
+                stage('Build Product Service Docker Image') {
+                    steps {
+                        script {
+                            sh 'docker build -t your-dockerhub-username/product-service:latest -f product-service/Dockerfile .'
+                        }
+                    }
+                }
+                stage('Build User Service Docker Image') {
+                    steps {
+                        script {
+                            sh 'docker build -t your-dockerhub-username/user-service:latest -f user-service/Dockerfile .'
+                        }
+                    }
                 }
             }
         }
 
-        stage('Push Docker Image') {
-            steps {
-                script {
-                    // Login to DockerHub
-                    sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
-                    // Push Docker image
-                    sh 'docker push your-dockerhub-username/java-project:latest'
+        stage('Push Docker Images') {
+            parallel {
+                stage('Push Order Service Docker Image') {
+                    steps {
+                        script {
+                            sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
+                            sh 'docker push your-dockerhub-username/order-service:latest'
+                        }
+                    }
+                }
+                stage('Push Product Service Docker Image') {
+                    steps {
+                        script {
+                            sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
+                            sh 'docker push your-dockerhub-username/product-service:latest'
+                        }
+                    }
+                }
+                stage('Push User Service Docker Image') {
+                    steps {
+                        script {
+                            sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
+                            sh 'docker push your-dockerhub-username/user-service:latest'
+                        }
+                    }
                 }
             }
         }
 
-        stage('Deploy') {
+        stage('Deploy to Kubernetes') {
             steps {
-                echo 'Deploying the application...'
-                // Add your deployment steps here, such as Kubernetes deployment
+                script {
+                    sh 'kubectl apply -f k8s/order-service.yaml'
+                    sh 'kubectl apply -f k8s/product-service.yaml'
+                    sh 'kubectl apply -f k8s/user-service.yaml'
+                }
             }
         }
     }
@@ -64,11 +102,10 @@ pipeline {
             archiveArtifacts artifacts: '**/target/*.jar', allowEmptyArchive: true
         }
         success {
-            echo 'Build and deployment succeeded!'
+            echo 'Build, push, and deployment succeeded!'
         }
         failure {
-            echo 'Build or deployment failed!'
+            echo 'Build, push, or deployment failed!'
         }
     }
 }
-
