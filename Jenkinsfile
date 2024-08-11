@@ -64,7 +64,6 @@ pipeline {
         }
 
         stage('Build Docker Images') {
-            agent any
             parallel {
                 stage('Build Order Service Docker Image') {
                     steps {
@@ -91,7 +90,6 @@ pipeline {
         }
 
         stage('Push Docker Images') {
-            agent any
             parallel {
                 stage('Push Order Service Docker Image') {
                     steps {
