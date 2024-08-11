@@ -1,5 +1,5 @@
 pipeline {
-    agent any
+    agent none
 
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
@@ -7,59 +7,55 @@ pipeline {
 
     stages {
         stage('Checkout') {
+            agent any
             steps {
                 git url: 'https://github.com/olukotunN/JavaProject', branch: 'main'
             }
         }
 
-        stage('Build') {
+        stage('Build and Test') {
             parallel {
-                stage('Build Order Service') {
+                stage('Order Service') {
+                    agent {
+                        docker {
+                            image 'node:18-alpine'
+                            args '-v /root/.npm:/root/.npm'
+                        }
+                    }
                     steps {
                         dir('order-service') {
                             sh 'npm install'
                             sh 'npm run build'
-                        }
-                    }
-                }
-                stage('Build Product Service') {
-                    steps {
-                        dir('product-service') {
-                            sh 'npm install'
-                            sh 'npm run build'
-                        }
-                    }
-                }
-                stage('Build User Service') {
-                    steps {
-                        dir('user-service') {
-                            sh 'npm install'
-                            sh 'npm run build'
-                        }
-                    }
-                }
-            }
-        }
-
-        stage('Test') {
-            parallel {
-                stage('Test Order Service') {
-                    steps {
-                        dir('order-service') {
                             sh 'npm test'
                         }
                     }
                 }
-                stage('Test Product Service') {
+                stage('Product Service') {
+                    agent {
+                        docker {
+                            image 'node:18-alpine'
+                            args '-v /root/.npm:/root/.npm'
+                        }
+                    }
                     steps {
                         dir('product-service') {
+                            sh 'npm install'
+                            sh 'npm run build'
                             sh 'npm test'
                         }
                     }
                 }
-                stage('Test User Service') {
+                stage('User Service') {
+                    agent {
+                        docker {
+                            image 'node:18-alpine'
+                            args '-v /root/.npm:/root/.npm'
+                        }
+                    }
                     steps {
                         dir('user-service') {
+                            sh 'npm install'
+                            sh 'npm run build'
                             sh 'npm test'
                         }
                     }
@@ -68,6 +64,7 @@ pipeline {
         }
 
         stage('Build Docker Images') {
+            agent any
             parallel {
                 stage('Build Order Service Docker Image') {
                     steps {
@@ -94,6 +91,7 @@ pipeline {
         }
 
         stage('Push Docker Images') {
+            agent any
             parallel {
                 stage('Push Order Service Docker Image') {
                     steps {
@@ -123,6 +121,7 @@ pipeline {
         }
 
         stage('Deploy to Kubernetes') {
+            agent any
             steps {
                 script {
                     sh 'kubectl apply -f k8s/order-service.yaml'
