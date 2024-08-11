@@ -13,20 +13,56 @@ pipeline {
         }
 
         stage('Build') {
-            steps {
-                // Build the Java project using Maven
-                sh 'mvn clean install'
+            parallel {
+                stage('Build Order Service') {
+                    steps {
+                        dir('order-service') {
+                            sh 'npm install'
+                            sh 'npm run build'
+                        }
+                    }
+                }
+                stage('Build Product Service') {
+                    steps {
+                        dir('product-service') {
+                            sh 'npm install'
+                            sh 'npm run build'
+                        }
+                    }
+                }
+                stage('Build User Service') {
+                    steps {
+                        dir('user-service') {
+                            sh 'npm install'
+                            sh 'npm run build'
+                        }
+                    }
+                }
             }
         }
 
         stage('Test') {
-            steps {
-                // Run tests
-                sh 'mvn test'
-            }
-            post {
-                always {
-                    junit '**/target/surefire-reports/*.xml'
+            parallel {
+                stage('Test Order Service') {
+                    steps {
+                        dir('order-service') {
+                            sh 'npm test'
+                        }
+                    }
+                }
+                stage('Test Product Service') {
+                    steps {
+                        dir('product-service') {
+                            sh 'npm test'
+                        }
+                    }
+                }
+                stage('Test User Service') {
+                    steps {
+                        dir('user-service') {
+                            sh 'npm test'
+                        }
+                    }
                 }
             }
         }
